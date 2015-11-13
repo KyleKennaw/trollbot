@@ -43,16 +43,20 @@ var log = mod_bunyan.createLogger({
         stream: process.stderr
     });
 var demeritsPath = './data/demerits.json';
-var meritsPath = './data/merits.json'
+var meritsPath = './data/merits.json';
+var khjsPath = './data/khjs.json';
 var demerits = mod_jsonfile.readFileSync(demeritsPath);
 var merits = mod_jsonfile.readFileSync(meritsPath);
+var khjs = mod_jsonfile.readFileSync(khjsPath);
 var lastMessage = undefined;
 
 var helpMessage = [
     '@<username>: demerit         -- gives a user a demerit\n',
     '@<username>: merit           -- gives a user a merit\n',
+    '@<username>: khj             -- gives a user a KHJ\n',
     'merit                        -- gives last message user a merit\n',
     'demerit                      -- gives last message user a demerit\n',
+    'khj                          -- gives last message user a KHJ\n',
     'self: demerit                -- give yourself a demerit\n',
     '@<botname>: stats            -- shows merit and demerit stats\n',
     '@<botname>: help             -- shows this message\n'
@@ -76,6 +80,15 @@ function issueMerit(showName, channel) {
     channel.send('Merit to ' + showName + ' (count: ' + count + ')');
 }
 
+function issueKhj(showName, channel) {
+    var name = showName.toLowerCase();
+    khjs[name] = khjs[name] ? khjs[name] + 1 : 1;
+    var count = khjs[name];
+
+    log.info('KHJ issued to %s', name);
+    channel.send('KHJ to ' + showName + ' (count: ' + count + ')');
+}
+
 function collectStat(message, channel) {
     if (message && message.text) {
         var text = message.text;
@@ -83,6 +96,8 @@ function collectStat(message, channel) {
         var userDemeritMatch = text.match(/<@([A-Za-z0-9]+)>:( ?)demerit/);
         var meritMatch = text.match(/([A-Za-z0-9]+):( ?)merit/);
         var userMeritMatch = text.match(/<@([A-Za-z0-9]+)>:( ?)merit/);
+        var khjMatch = text.match(/([A-Za-z0-9]+):( ?)khj/);
+        var khjMeritMatch = text.match(/<@([A-Za-z0-9]+)>:( ?)khj/);
 
         if (demeritMatch) {
             var name = demeritMatch[1];
@@ -98,6 +113,11 @@ function collectStat(message, channel) {
         } else if (userMeritMatch) {
             var user = slack.getUserByID(userMeritMatch[1]);
             issueMerit(user.name, channel);
+        } else if (khjMatch) {
+            issueKhj(khjMatch[1], channel);
+        } else if (userKhjMatch) {
+            var user = slack.getUserByID(userKhjMatch[1]);
+            issueKhj(user.name, channel);
         } else if (text.toLowerCase() === 'merit') {
             if (lastMessage) {
                 var user = slack.getUserByID(lastMessage.user);
@@ -111,6 +131,13 @@ function collectStat(message, channel) {
                 issueDemerit(user.name, channel);
             } else {
                 log.warn('Failure - demerit - lastMessage: %j', lastMessage);
+            }
+        } else if (text.toLowerCase() === 'khj') {
+            if (lastMessage) {
+                var user = slack.getUserByID(lastMessage.user);
+                issueKhj(user.name, channel);
+            } else {
+                log.warn('Failure - KHJ - lastMessage: %j', lastMessage);
             }
         } else {
             log.warn(
@@ -192,6 +219,12 @@ function main() {
         mod_jsonfile.writeFile(meritsPath, merits, function (err) {
             if (err) {
                 log.error('Error saving merits: %s', err);
+            }
+        });
+
+        mod_jsonfile.writeFile(khjsPatch, merits, function (err) {
+            if (err) {
+                log.error('Error saving KHJs: %s', err);
             }
         });
 
