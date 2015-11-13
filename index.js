@@ -162,6 +162,13 @@ function sendStats(channel) {
         }
     }
 
+    stats += '\n\n\nKHJs\n------------\n';
+    for (var user in khjs) {
+        if (khjs.hasOwnProperty(user)) {
+           stats += user + ': ' + khjs[user] + '\n';
+        }
+    }
+
     channel.send(stats);
 }
 
@@ -222,7 +229,7 @@ function main() {
             }
         });
 
-        mod_jsonfile.writeFile(khjsPatch, merits, function (err) {
+        mod_jsonfile.writeFile(khjsPath, khjs, function (err) {
             if (err) {
                 log.error('Error saving KHJs: %s', err);
             }
